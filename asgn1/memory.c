@@ -23,12 +23,29 @@ int main(void) {
     int bytesRead;
 
     char buffer[buff_size];
-    read(STDIN_FILENO, buffer, buff_size);
+    
+    int total = 0;
+    
+
+    do{
+
+        bytesRead = read(STDIN_FILENO, buffer+total, buff_size-total);
+        total += bytesRead;
+
+    } while(bytesRead > 0 );
+
+
+    //printf("%c\n", buffer[total-1]);
+    
 
     char *command = strtok(buffer, "\n");
     //create new variable for filename
 
     if (strcmp("get", command) == 0) {
+
+        if (buffer[total-1] != '\n'){
+            inval();
+        } 
 
         filename = strtok(NULL, "\n");
 
@@ -40,15 +57,24 @@ int main(void) {
         totalBytesWritten = 0;
 
         do {
+            int bytesWritten;
+
+
             bytesRead = read(fd, buffer, buff_size);
+
+
             if (bytesRead == -1) {
                 inval();
             }
 
-            int bytesWritten = write(STDOUT_FILENO, buffer, bytesRead);
-            if (bytesWritten == -1) {
-                inval();
-            }
+            //do{
+
+                 bytesWritten = write(STDOUT_FILENO, buffer, bytesRead);
+                if (bytesWritten == -1) {
+                    inval();
+                }
+
+           // }while (bytesWritten < bytesRead);
 
         } while (bytesRead != 0);
 
@@ -113,3 +139,17 @@ int main(void) {
 
     //  }
 }
+
+
+
+do{
+    int bytesRead = read(srcfd, buffer, BUF_SIZE);
+
+    do{
+        bytesWritten = write(destfd, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
+        totalBytesWritten += bytesWritten;
+    } while (bytesWritten > 0 && totalBytesWritten < numBytes);
+
+    totalBytesRead += bytesRead;
+
+} while (bytesRead > 0 && totalBytesRead < numBytes);
