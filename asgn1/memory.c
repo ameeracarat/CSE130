@@ -67,14 +67,11 @@ int main(void) {
                 inval();
             }
 
-            //do{
-
+            
                  bytesWritten = write(STDOUT_FILENO, buffer, bytesRead);
                 if (bytesWritten == -1) {
                     inval();
                 }
-
-           // }while (bytesWritten < bytesRead);
 
         } while (bytesRead != 0);
 
@@ -132,7 +129,7 @@ int main(void) {
 }
 
 
-
+//PASSBYTES()
 // do{
 //     int bytesRead = read(srcfd, buffer, BUF_SIZE);
 
@@ -144,4 +141,31 @@ int main(void) {
 //     totalBytesRead += bytesRead;
 
 // } while (bytesRead > 0 && totalBytesRead < numBytes);
+
+
+
+//WRITEBYTES()
+//USE JUST THIS FOR SET
+// do{
+//         bytesWritten = write(destfd, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
+//         totalBytesWritten += bytesWritten;
+//     } while (bytesWritten > 0 && totalBytesWritten < numBytes);
+
+
+// set() {
+//     open file (wronly ocreat otrunc)
+//     writeBytes(fd, buffer, len);
+//     passBytes(stdin (srcfd), fd (destfd), remaining);
+//     print "OK\n"
+//     close file
+// }
+
+
+// get(){
+//     open file (rdonly)
+//     get file size (use fstat())
+//     passBytes(fd, stdout, fileSize)
+
+//     close file
+// }
 
