@@ -23,29 +23,24 @@ int main(void) {
     int bytesRead;
 
     char buffer[buff_size];
-    
+
     int total = 0;
-    
 
-    do{
+    do {
 
-        bytesRead = read(STDIN_FILENO, buffer+total, buff_size-total);
+        bytesRead = read(STDIN_FILENO, buffer + total, buff_size - total);
         total += bytesRead;
 
-    } while(bytesRead > 0 );
+    } while (bytesRead > 0);
 
-
-    //printf("%c\n", buffer[total-1]);
-    
 
     char *command = strtok(buffer, "\n");
-    //create new variable for filename
 
     if (strcmp("get", command) == 0) {
 
-        if (buffer[total-1] != '\n'){
+        if (buffer[total - 1] != '\n') {
             inval();
-        } 
+        }
 
         filename = strtok(NULL, "\n");
 
@@ -58,22 +53,29 @@ int main(void) {
 
         do {
             int bytesWritten;
-
+            totalBytesWritten = 0;
 
             bytesRead = read(fd, buffer, buff_size);
 
-
             if (bytesRead == -1) {
+                close(fd);
                 inval();
             }
 
-            
-                 bytesWritten = write(STDOUT_FILENO, buffer, bytesRead);
-                if (bytesWritten == -1) {
-                    inval();
-                }
+            do{
 
-        } while (bytesRead != 0);
+            bytesWritten = write(STDOUT_FILENO, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
+            totalBytesWritten += bytesWritten;
+            if (bytesWritten == -1) {
+                close(fd);
+                inval();
+            }
+
+            } while(bytesWritten > 0 && totalBytesWritten < bytesRead);
+
+        } while (bytesRead > 0);
+
+        close(fd);
 
         exit(0);
 
@@ -100,6 +102,10 @@ int main(void) {
         do {
 
             bytesRead = read(STDIN_FILENO, buffer, buff_size);
+            if (bytesRead == -1) {
+                close(fd);
+                inval();
+            }
 
             //while(totalBytesWritten < bytesRead){
 
@@ -112,6 +118,10 @@ int main(void) {
 
                 bytesWritten = write(fd, buffer, bytesToRead);
                 totalBytesWritten += bytesToRead;
+                if (bytesWritten == -1) {
+                    close(fd);
+                    inval();
+                }
             }
 
             //}
@@ -119,15 +129,13 @@ int main(void) {
         } while (bytesRead != 0 || (totalBytesWritten == con_len));
 
         write(STDOUT_FILENO, "OK\n", strlen("OK\n"));
+        close(fd);
         exit(0);
 
     } else {
         inval();
     }
-
-    
 }
-
 
 //PASSBYTES()
 // do{
@@ -142,15 +150,12 @@ int main(void) {
 
 // } while (bytesRead > 0 && totalBytesRead < numBytes);
 
-
-
 //WRITEBYTES()
 //USE JUST THIS FOR SET
 // do{
 //         bytesWritten = write(destfd, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
 //         totalBytesWritten += bytesWritten;
 //     } while (bytesWritten > 0 && totalBytesWritten < numBytes);
-
 
 // set() {
 //     open file (wronly ocreat otrunc)
@@ -160,7 +165,6 @@ int main(void) {
 //     close file
 // }
 
-
 // get(){
 //     open file (rdonly)
 //     get file size (use fstat())
@@ -168,4 +172,3 @@ int main(void) {
 
 //     close file
 // }
-
