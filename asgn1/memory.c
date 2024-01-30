@@ -128,28 +128,20 @@ int main(void) {
         inval();
     }
 
-    // do{
-
-    //  int bytesRead = read(STDOUT_FILENO, buffer, buff_size);
-    //    //while(totalBytesWritten)
-    //    while(totalBytesWritten < bytesRead){
-    //     bytesWritten = write(STDOUT_FILENO, buffer, totalBytesWritten, bytesRead);
-    //     totalBytesWritten += bytesWritten;
-    //    }
-
-    //  }
+    
 }
 
 
 
-do{
-    int bytesRead = read(srcfd, buffer, BUF_SIZE);
+// do{
+//     int bytesRead = read(srcfd, buffer, BUF_SIZE);
 
-    do{
-        bytesWritten = write(destfd, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
-        totalBytesWritten += bytesWritten;
-    } while (bytesWritten > 0 && totalBytesWritten < numBytes);
+//     do{
+//         bytesWritten = write(destfd, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
+//         totalBytesWritten += bytesWritten;
+//     } while (bytesWritten > 0 && totalBytesWritten < numBytes);
 
-    totalBytesRead += bytesRead;
+//     totalBytesRead += bytesRead;
 
-} while (bytesRead > 0 && totalBytesRead < numBytes);
+// } while (bytesRead > 0 && totalBytesRead < numBytes);
+
