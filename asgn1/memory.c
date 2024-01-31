@@ -10,6 +10,29 @@ void inval(void) {
     exit(1);
 }
 
+
+
+void str_write(int fd, char *buf, size_t num_chars) {
+    ssize_t result;
+
+    size_t num_written = 0;
+
+    for (;;) {
+        result = write(fd, buf + num_written, num_chars);
+
+        if (result < 0){
+            //printf("there is an issue");
+            break;
+            
+        }
+        if (result == 0) break;
+
+        num_written += result;
+        num_chars -= result;
+    }
+}
+
+
 int main(void) {
 
     int bytesToRead;
@@ -26,6 +49,10 @@ int main(void) {
 
     int total = 0;
 
+     int totalBytesRead = 0;
+        int bytesWritten = 0;
+
+
     do {
 
         bytesRead = read(STDIN_FILENO, buffer + total, buff_size - total);
@@ -33,6 +60,9 @@ int main(void) {
 
     } while (bytesRead > 0);
 
+    // if (total < buff_size){
+    //     buffer[total] = '\0'; 
+    // }
 
     char *command = strtok(buffer, "\n");
 
@@ -62,16 +92,17 @@ int main(void) {
                 inval();
             }
 
-            do{
+            do {
 
-            bytesWritten = write(STDOUT_FILENO, buffer+totalBytesWritten, bytesRead - totalBytesWritten);
-            totalBytesWritten += bytesWritten;
-            if (bytesWritten == -1) {
-                close(fd);
-                inval();
-            }
+                bytesWritten = write(
+                    STDOUT_FILENO, buffer + totalBytesWritten, bytesRead - totalBytesWritten);
+                totalBytesWritten += bytesWritten;
+                if (bytesWritten == -1) {
+                    close(fd);
+                    inval();
+                }
 
-            } while(bytesWritten > 0 && totalBytesWritten < bytesRead);
+            } while (bytesWritten > 0 && totalBytesWritten < bytesRead);
 
         } while (bytesRead > 0);
 
@@ -95,38 +126,44 @@ int main(void) {
             exit(0);
         }
 
-        char *content = strtok(NULL, "");
 
-        int bytesWritten = write(fd, content, con_len);
+        int command_len = total - 3 - 3 - strlen(filename) - strlen(content_len);
+        char* content = &buffer[total - command_len];
+
+
+
+
+        str_write(fd, content, command_len);
+
 
         do {
 
             bytesRead = read(STDIN_FILENO, buffer, buff_size);
+            totalBytesWritten = 0;
+
             if (bytesRead == -1) {
                 close(fd);
                 inval();
             }
 
-            //while(totalBytesWritten < bytesRead){
+            //bytesWritten = write(fd, buffer, bytesRead);
 
-            if (bytesRead > 0 && (con_len > totalBytesWritten)) {
-                if ((bytesRead + totalBytesWritten) > con_len) {
-                    bytesToRead = totalBytesWritten + bytesRead - con_len;
-                } else {
-                    bytesToRead = bytesRead;
-                }
+          //  do {
+                // bytesWritten
+                //     = write(fd, buffer + totalBytesWritten, bytesRead - totalBytesWritten);
+                // totalBytesWritten += bytesWritten;
 
-                bytesWritten = write(fd, buffer, bytesToRead);
-                totalBytesWritten += bytesToRead;
+                bytesWritten = write(fd, buffer, bytesRead);
+                totalBytesWritten += bytesWritten;
+
                 if (bytesWritten == -1) {
                     close(fd);
                     inval();
                 }
-            }
 
-            //}
+         //   } while (bytesWritten > 0 && totalBytesWritten < bytesRead);
 
-        } while (bytesRead != 0 || (totalBytesWritten == con_len));
+        } while (bytesRead != 0 && totalBytesRead < con_len);
 
         write(STDOUT_FILENO, "OK\n", strlen("OK\n"));
         close(fd);
