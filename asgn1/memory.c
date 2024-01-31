@@ -10,8 +10,6 @@ void inval(void) {
     exit(1);
 }
 
-
-
 void str_write(int fd, char *buf, size_t num_chars) {
     ssize_t result;
 
@@ -20,18 +18,17 @@ void str_write(int fd, char *buf, size_t num_chars) {
     for (;;) {
         result = write(fd, buf + num_written, num_chars);
 
-        if (result < 0){
+        if (result < 0) {
             //printf("there is an issue");
             break;
-            
         }
-        if (result == 0) break;
+        if (result == 0)
+            break;
 
         num_written += result;
         num_chars -= result;
     }
 }
-
 
 int main(void) {
 
@@ -49,9 +46,8 @@ int main(void) {
 
     int total = 0;
 
-     int totalBytesRead = 0;
-        int bytesWritten = 0;
-
+    int totalBytesRead = 0;
+    int bytesWritten = 0;
 
     do {
 
@@ -61,7 +57,7 @@ int main(void) {
     } while (bytesRead > 0);
 
     // if (total < buff_size){
-    //     buffer[total] = '\0'; 
+    //     buffer[total] = '\0';
     // }
 
     char *command = strtok(buffer, "\n");
@@ -126,15 +122,10 @@ int main(void) {
             exit(0);
         }
 
-
         int command_len = total - 3 - 3 - strlen(filename) - strlen(content_len);
-        char* content = &buffer[total - command_len];
-
-
-
+        char *content = &buffer[total - command_len];
 
         str_write(fd, content, command_len);
-
 
         do {
 
@@ -148,20 +139,20 @@ int main(void) {
 
             //bytesWritten = write(fd, buffer, bytesRead);
 
-          //  do {
-                // bytesWritten
-                //     = write(fd, buffer + totalBytesWritten, bytesRead - totalBytesWritten);
-                // totalBytesWritten += bytesWritten;
+            //  do {
+            // bytesWritten
+            //     = write(fd, buffer + totalBytesWritten, bytesRead - totalBytesWritten);
+            // totalBytesWritten += bytesWritten;
 
-                bytesWritten = write(fd, buffer, bytesRead);
-                totalBytesWritten += bytesWritten;
+            bytesWritten = write(fd, buffer, bytesRead);
+            totalBytesWritten += bytesWritten;
 
-                if (bytesWritten == -1) {
-                    close(fd);
-                    inval();
-                }
+            if (bytesWritten == -1) {
+                close(fd);
+                inval();
+            }
 
-         //   } while (bytesWritten > 0 && totalBytesWritten < bytesRead);
+            //   } while (bytesWritten > 0 && totalBytesWritten < bytesRead);
 
         } while (bytesRead != 0 && totalBytesRead < con_len);
 
