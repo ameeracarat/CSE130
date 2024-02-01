@@ -32,7 +32,6 @@ void str_write(int fd, char *buf, size_t num_chars) {
 
 int main(void) {
 
-
     int fd;
     char *filename;
     int totalBytesWritten = 0;
