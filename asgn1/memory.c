@@ -32,7 +32,6 @@ void str_write(int fd, char *buf, size_t num_chars) {
 
 int main(void) {
 
-    int bytesToRead;
 
     int fd;
     char *filename;
