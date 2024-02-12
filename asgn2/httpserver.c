@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include "asgn2_helper_funcs.h"
 #include <regex.h>
+#include <sys/stat.h>
 
 #define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
@@ -20,19 +21,13 @@ int main(int argc, char *argv[]) {
 
     char *filename = NULL;
 
-    
-
-    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z -]{1,63}:\r\n)*\r\n(.*)";
-    
-
-
+    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z -]{1,63}: "
+               "[1-9]\r\n)*\r\n";
 
     //char *re2 = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n(.*)\r\n";
 
     static const char *s
         = "PUT /foo.txt HTTP/1.1\r\nContent-Length: 21\r\n\r\nHello foo, I am World";
-
-        
 
     if (argc != 2) {
         fprintf(stderr, "Invalid Port\n");
@@ -61,9 +56,10 @@ int main(int argc, char *argv[]) {
 
         ssize_t bytes_read = 0;
 
-        bytes_read = read_n_bytes(sock, buffer, buff_size);
+        // bytes_read = read_n_bytes(sock, buffer, buff_size);
+        //bytes_read =  read_until(fd, buffer, buff_size, "\r\n\r\n");
 
-        //bytes_read = read_until(sock, buffer, buff_size, "\r\n\r\n");
+        bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
 
         printf("bytess read: %zd\n", bytes_read);
 
@@ -159,13 +155,22 @@ int main(int argc, char *argv[]) {
 
             ssize_t writ = write_n_bytes(sock, message, sizeof(message));
 
-            if (lseek(fd, 0, SEEK_SET) == -1) {
-                perror("Error resetting file offset");
+            struct stat fileStat;
+            if (fstat(fd, &fileStat) == -1) {
+                perror("Error getting file information");
                 close(fd);
                 return 1;
             }
+            off_t fileSize = fileStat.st_size;
 
-            //ssize_t passed_bytes = pass_n_bytes(fd, sock, 99);
+            char sizeString[1000];
+            snprintf(sizeString, 1000, "%lld", (long long) fileSize);
+
+            writ = write_n_bytes(sock, sizeString, strlen(sizeString));
+
+            writ = write_n_bytes(sock, "\n", strlen("\n"));
+
+            ssize_t passed_bytes = pass_n_bytes(fd, sock, 99);
 
         }
 
