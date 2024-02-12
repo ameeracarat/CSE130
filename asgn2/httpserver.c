@@ -20,12 +20,19 @@ int main(int argc, char *argv[]) {
 
     char *filename = NULL;
 
-    //char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9._]{1,63}) (HTTP/1\\.1)\r\n(.*)(.*)$";
-    //char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9._]{1,63}) (HTTP/1\\.1)\r\n(.*\r\n)*([a-zA-Z]: 12\r\n)(.*)$";
-    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9._]{1,63}) (HTTP/1\\.1)\r\n(.*\r\n)(.*)$";
+    
+
+    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z -]{1,63}:\r\n)*\r\n(.*)";
+    
+
+
+
+    //char *re2 = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n(.*)\r\n";
 
     static const char *s
         = "PUT /foo.txt HTTP/1.1\r\nContent-Length: 21\r\n\r\nHello foo, I am World";
+
+        
 
     if (argc != 2) {
         fprintf(stderr, "Invalid Port\n");
@@ -148,21 +155,15 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
 
-            
-
-            char message[] = "HTTP/1.1 20540900 OK\r\nContent-Length: ";
+            char message[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
 
             ssize_t writ = write_n_bytes(sock, message, sizeof(message));
 
-            
-
-            
             if (lseek(fd, 0, SEEK_SET) == -1) {
-        perror("Error resetting file offset");
-        close(fd);
-        return 1;
-    }
-
+                perror("Error resetting file offset");
+                close(fd);
+                return 1;
+            }
 
             //ssize_t passed_bytes = pass_n_bytes(fd, sock, 99);
 
