@@ -8,6 +8,7 @@
 #include "asgn2_helper_funcs.h"
 #include <regex.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
@@ -21,8 +22,9 @@ int main(int argc, char *argv[]) {
 
     char *filename = NULL;
 
-    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9.-/_]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z0-9.-]{1,128}: "
-               "[ -~]{1,128}\r\n)*\r\n";
+    char *re
+        = "^([A-Z]{1,8}) /([a-zA-Z0-9.-/_]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z0-9.-]{1,128}: "
+          "[ -~]{1,128}\r\n)*\r\n";
 
     //char *re2 = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n(.*)\r\n";
 
@@ -125,34 +127,54 @@ int main(int argc, char *argv[]) {
 
             fd = open(filename, O_RDONLY, 0);
             if (fd == -1) {
-                fprintf(stderr, "Failed to open file for get\n");
-                exit(1);
+
+                //file does not exist
+                if (errno == ENOENT) {
+                    char message404[]
+                        = "HTTP/1.1 404 Not Found\r\nContent-Length: 10\r\n\r\nNot Found\n";
+                    ssize_t writ2 = write_n_bytes(sock, message404, strlen(message404));
+                }
+                // else {
+                //     char message403[]
+                //         = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
+                //     ssize_t writ3 = write_n_bytes(sock, message403, strlen(message403));
+                //     //fprintf(stderr, "Failed to open file for get\n");
+                // }
+            } else {
+
+                struct stat statbuf;
+                if (stat(filename, &statbuf) == -1) {
+                    perror("stat");
+                    exit(EXIT_FAILURE);
+                }
+
+                if (S_ISDIR(statbuf.st_mode)) {
+                    char message403[]
+                        = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
+                    ssize_t writ3 = write_n_bytes(sock, message403, strlen(message403));
+                    //fprintf(stderr, "Failed to open file for get\n");
+                }
+
+                char message[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
+
+                ssize_t writ = write_n_bytes(sock, message, strlen(message));
+
+                struct stat fileStat;
+                if (fstat(fd, &fileStat) == -1) {
+                    perror("Error getting file information");
+                    close(fd);
+                    return 1;
+                }
+                off_t fileSize = fileStat.st_size;
+
+                char sizeString[1000];
+                snprintf(sizeString, 1000, "%lld", (long long) fileSize);
+                writ = write_n_bytes(sock, sizeString, strlen(sizeString));
+
+                writ = write_n_bytes(sock, "\r\n\r\n", strlen("\r\n\r\n"));
+
+                ssize_t passed_bytes = pass_n_bytes(fd, sock, fileSize);
             }
-            
-            char message[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
-
-            ssize_t writ = write_n_bytes(sock, message, strlen(message));
-
-            struct stat fileStat;
-            if (fstat(fd, &fileStat) == -1) {
-                perror("Error getting file information");
-                close(fd);
-                return 1;
-            }
-            off_t fileSize = fileStat.st_size;
-
-            char sizeString[1000];
-            snprintf(sizeString, 1000, "%lld", (long long) fileSize);
-            writ = write_n_bytes(sock, sizeString, strlen(sizeString));
-
-
-            writ = write_n_bytes(sock, "\r\n\r\n", strlen("\r\n\r\n"));
-
-            ssize_t passed_bytes = pass_n_bytes(fd, sock, fileSize);
-            
-            fprintf(stderr, "passed: %zd\n", passed_bytes);
-
-            fprintf(stderr, "checking2\n");
 
         }
 
@@ -199,7 +221,6 @@ int main(int argc, char *argv[]) {
         free(filename);
 
         close(sock);
-        fprintf(stderr, "checking close\n");
     }
 
     return 0;
