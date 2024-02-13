@@ -129,10 +129,9 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
             
-            
             char message[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
 
-            ssize_t writ = write_n_bytes(sock, message, sizeof(message));
+            ssize_t writ = write_n_bytes(sock, message, strlen(message));
 
             struct stat fileStat;
             if (fstat(fd, &fileStat) == -1) {
@@ -144,12 +143,16 @@ int main(int argc, char *argv[]) {
 
             char sizeString[1000];
             snprintf(sizeString, 1000, "%lld", (long long) fileSize);
-
             writ = write_n_bytes(sock, sizeString, strlen(sizeString));
+
 
             writ = write_n_bytes(sock, "\r\n\r\n", strlen("\r\n\r\n"));
 
             ssize_t passed_bytes = pass_n_bytes(fd, sock, fileSize);
+            
+            fprintf(stderr, "passed: %zd\n", passed_bytes);
+
+            fprintf(stderr, "checking2\n");
 
         }
 
@@ -196,6 +199,7 @@ int main(int argc, char *argv[]) {
         free(filename);
 
         close(sock);
+        fprintf(stderr, "checking close\n");
     }
 
     return 0;
