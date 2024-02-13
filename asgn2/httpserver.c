@@ -21,8 +21,8 @@ int main(int argc, char *argv[]) {
 
     char *filename = NULL;
 
-    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z -]{1,63}: "
-               "[1-9]\r\n)*\r\n";
+    char *re = "^([A-Z]{1,8}) /([a-zA-Z0-9.-/_]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z -]{1,63}: "
+               "[1-9a-zA-Z-]{1,63}\r\n)*\r\n";
 
     //char *re2 = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n(.*)\r\n";
 
@@ -125,32 +125,11 @@ int main(int argc, char *argv[]) {
 
             fd = open(filename, O_RDONLY, 0);
             if (fd == -1) {
-                fprintf(stderr, "Failed to open file\n");
+                fprintf(stderr, "Failed to open file for get\n");
                 exit(1);
             }
-
-            off_t end_position = lseek(fd, 0, SEEK_END);
-            if (end_position == -1) {
-                perror("Failed to seek end of file");
-                close(fd);
-                return 1;
-            }
-
-            // Get current file position, which is the size of the file
-            off_t size = lseek(fd, 0, SEEK_CUR);
-            if (size == -1) {
-                perror("Failed to get file size");
-                close(fd);
-                return 1;
-            }
-
-            // Reset file pointer to beginning of file
-            if (lseek(fd, 0, SEEK_SET) == -1) {
-                perror("Failed to seek beginning of file");
-                close(fd);
-                return 1;
-            }
-
+            
+            
             char message[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
 
             ssize_t writ = write_n_bytes(sock, message, sizeof(message));
@@ -168,9 +147,9 @@ int main(int argc, char *argv[]) {
 
             writ = write_n_bytes(sock, sizeString, strlen(sizeString));
 
-            writ = write_n_bytes(sock, "\n", strlen("\n"));
+            writ = write_n_bytes(sock, "\r\n\r\n", strlen("\r\n\r\n"));
 
-            ssize_t passed_bytes = pass_n_bytes(fd, sock, 99);
+            ssize_t passed_bytes = pass_n_bytes(fd, sock, fileSize);
 
         }
 
@@ -192,7 +171,8 @@ int main(int argc, char *argv[]) {
                 size_t body_length = bytes_read - (body_start - buffer);
 
                 // Write out the message body
-                ssize_t bytes_written = write(fd, body_start, body_length);
+                //ssize_t bytes_written = write(fd, body_start, body_length);
+                ssize_t bytes_written = write_n_bytes(fd, body_start, body_length);
                 if (bytes_written == -1) {
                     fprintf(stderr, "Failed to write message body\n");
                     exit(EXIT_FAILURE);
