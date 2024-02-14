@@ -12,22 +12,24 @@
 
 #define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
+struct KeyValue {
+    char key[128];
+    char value[128];
+};
+
 int main(int argc, char *argv[]) {
 
     int fd;
-
     regex_t regex;
     regmatch_t pmatch[10];
-    //char filename[];
-
+    regmatch_t pmatch2[10];
     char *filename = NULL;
 
     char *re
         = "^([A-Z]{1,8}) /([a-zA-Z0-9.-/_]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z0-9.-]{1,128}: "
           "[ -~]{1,128}\r\n)*\r\n";
 
-    static const char *s
-        = "PUT /foo.txt HTTP/1.1\r\nContent-Length: 21\r\n\r\nHello foo, I am World";
+    char *re2 = "([a-zA-Z0-9.-]{1,128}): ([ -~]{1,128})\r\n";
 
     if (argc != 2) {
         fprintf(stderr, "Invalid Port\n");
@@ -42,7 +44,6 @@ int main(int argc, char *argv[]) {
 
     Listener_Socket *socket = calloc(1, sizeof(Listener_Socket));
     int sock = listener_init(socket, port);
-
     if (sock == -1) {
         fprintf(stderr, "Invalid Port\n");
         exit(1);
@@ -111,8 +112,9 @@ int main(int argc, char *argv[]) {
 
                         if (strcmp(matched_string, "1.1") != 0) {
 
-                            char message505[] = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: "
-                                                "22\r\n\r\nVersion Not Supported\n";
+                            char message505[]
+                                = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: "
+                                  "22\r\n\r\nVersion Not Supported\n";
                             ssize_t writ5 = write_n_bytes(sock, message505, strlen(message505));
                             get_put = 9;
                         }
@@ -185,12 +187,71 @@ int main(int argc, char *argv[]) {
         }
 
         //IF PUT
+
         else if (get_put == 1) {
+
+            int exists = 0;
+
+            if (access(filename, F_OK) != -1) {
+                exists = 1;
+            } 
 
             fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0666);
             if (fd == -1) {
                 fprintf(stderr, "Failed to open file\n");
                 exit(1);
+            }
+
+            if (regcomp(&regex, re2, REG_NEWLINE | REG_EXTENDED)) {
+                fprintf(stderr, "Failed to compile regex\n");
+                exit(EXIT_FAILURE);
+            }
+
+            int offset = 0;
+            struct KeyValue keyValues[100];
+            int numKeyValuePairs = 0;
+
+            while (regexec(&regex, buffer + offset, ARRAY_SIZE(pmatch2), pmatch2, 0) == 0) {
+
+                regoff_t start0 = pmatch2[0].rm_so;
+                regoff_t end0 = pmatch2[0].rm_eo;
+
+                regoff_t start1 = pmatch2[1].rm_so;
+                regoff_t end1 = pmatch2[1].rm_eo;
+
+                regoff_t start2 = pmatch2[2].rm_so;
+                regoff_t end2 = pmatch2[2].rm_eo;
+
+                if (start0 != -1 && end0 != -1) {
+                    printf("%.*s: ", (int) (end1 - start1), buffer + start1 + offset);
+                    printf("%.*s", (int) (end2 - start2), buffer + start2 + offset);
+
+                    strncpy(
+                        keyValues[numKeyValuePairs].key, buffer + start1 + offset, end1 - start1);
+                    keyValues[numKeyValuePairs].key[end1 - start1]
+                        = '\0'; // Null-terminate the string
+                    strncpy(
+                        keyValues[numKeyValuePairs].value, buffer + start2 + offset, end2 - start2);
+                    keyValues[numKeyValuePairs].value[end2 - start2]
+                        = '\0'; // Null-terminate the string
+
+                    numKeyValuePairs++; // Increment the counter
+                    printf("\n");
+                }
+
+                offset += end0;
+            }
+            int content_LENGTH = 0;
+
+            for (int i = 0; i < numKeyValuePairs; i++) {
+                printf("Key: %s, Value: %s\n", keyValues[i].key, keyValues[i].value);
+
+                // Check if the key is "Content-Length:"
+                if (strcmp(keyValues[i].key, "Content-Length") == 0) {
+                    // Convert the value to an integer and store it in content_LENGTH
+                    content_LENGTH = atoi(keyValues[i].value);
+                    printf("Content-Length found: %d\n", content_LENGTH);
+                }
             }
 
             char *body_start = strstr(buffer, "\r\n\r\n");
@@ -208,18 +269,33 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "Failed to write message body\n");
                     exit(EXIT_FAILURE);
                 }
+
+                ssize_t passed_bytes = pass_n_bytes(fd, sock, content_LENGTH - bytes_written);
             } else {
                 fprintf(stderr, "Double CRLF not found\n");
                 exit(EXIT_FAILURE);
             }
-            //ssize_t passed_bytes = pass_n_bytes(fd, sock, con_len - bytes_written);
-            // ssize_t bytes_written = write_n_bytes(fd, buf[], n)
+
+            if (exists == 1){
+                char message200[]
+                        = "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nOK\n";
+                    ssize_t writ9 = write_n_bytes(sock, message200, strlen(message200));
+            }
+            else{
+                char message201[]
+                        = "HTTP/1.1 201 Created\r\nContent-Length: 8\r\n\r\nCreated\n";
+                    ssize_t writ99 = write_n_bytes(sock, message201, strlen(message201));
+
+            }
+
+
+            
 
             close(fd);
 
         }
 
-        else if (get_put==2){
+        else if (get_put == 2) {
             char message501[]
                 = "HTTP/1.1 501 Not Implemented\r\nContent-Length: 16\r\n\r\nNot Implemented\n";
             ssize_t writ4 = write_n_bytes(sock, message501, strlen(message501));
