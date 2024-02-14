@@ -26,7 +26,6 @@ int main(int argc, char *argv[]) {
         = "^([A-Z]{1,8}) /([a-zA-Z0-9.-/_]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z0-9.-]{1,128}: "
           "[ -~]{1,128}\r\n)*\r\n";
 
-    //char *re2 = "^([A-Z]{1,8}) /([a-zA-Z0-9.-]{1,63}) HTTP/([0-9]\\.[0-9])\r\n(.*)\r\n";
 
     static const char *s
         = "PUT /foo.txt HTTP/1.1\r\nContent-Length: 21\r\n\r\nHello foo, I am World";
@@ -128,6 +127,8 @@ int main(int argc, char *argv[]) {
             fd = open(filename, O_RDONLY, 0);
             if (fd == -1) {
 
+                
+
                 //file does not exist
                 if (errno == ENOENT) {
                     char message404[]
@@ -175,6 +176,8 @@ int main(int argc, char *argv[]) {
 
                 ssize_t passed_bytes = pass_n_bytes(fd, sock, fileSize);
             }
+
+            close(fd);
 
         }
 
