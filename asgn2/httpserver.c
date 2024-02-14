@@ -26,7 +26,6 @@ int main(int argc, char *argv[]) {
         = "^([A-Z]{1,8}) /([a-zA-Z0-9.-/_]{1,63}) HTTP/([0-9]\\.[0-9])\r\n([a-zA-Z0-9.-]{1,128}: "
           "[ -~]{1,128}\r\n)*\r\n";
 
-
     static const char *s
         = "PUT /foo.txt HTTP/1.1\r\nContent-Length: 21\r\n\r\nHello foo, I am World";
 
@@ -57,17 +56,7 @@ int main(int argc, char *argv[]) {
 
         ssize_t bytes_read = 0;
 
-        // bytes_read = read_n_bytes(sock, buffer, buff_size);
-        //bytes_read =  read_until(fd, buffer, buff_size, "\r\n\r\n");
-
         bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
-
-        printf("bytess read: %zd\n", bytes_read);
-
-        for (int i = 0; i < bytes_read; ++i) {
-            printf("%c", buffer[i]);
-        }
-        printf("\n\n\n");
 
         if (regcomp(&regex, re, REG_NEWLINE | REG_EXTENDED)) {
             fprintf(stderr, "Failed to compile regex\n");
@@ -92,14 +81,12 @@ int main(int argc, char *argv[]) {
 
                         // Check if the extracted string is equal to "GET"
                         if (strcmp(matched_string, "GET") == 0) {
-                            printf("Second element is \"GET\"\n");
+
                             get_put = 0;
 
                         } else if (strcmp(matched_string, "PUT") == 0) {
-                            printf("Second element is \"PUT\"\n");
+
                             get_put = 1;
-                        } else {
-                            printf("Second element is not get or put\n");
                         }
                     }
 
@@ -115,10 +102,28 @@ int main(int argc, char *argv[]) {
                         filename[end - start] = '\0';
                         printf("Filename: %s\n", filename);
                     }
+
+                    if (i == 3) {
+
+                        char matched_string[end - start + 1];
+                        strncpy(matched_string, buffer + start, end - start);
+                        matched_string[end - start] = '\0';
+
+                        if (strcmp(matched_string, "1.1") != 0) {
+
+                            char message505[] = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: "
+                                                "22\r\n\r\nVersion Not Supported\n";
+                            ssize_t writ5 = write_n_bytes(sock, message505, strlen(message505));
+                            get_put = 9;
+                        }
+                    }
                 }
             }
         } else {
-            fprintf(stderr, "No match found\n");
+
+            char message400[]
+                = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
+            ssize_t writ3 = write_n_bytes(sock, message400, strlen(message400));
         }
 
         //IF GET
@@ -126,8 +131,6 @@ int main(int argc, char *argv[]) {
 
             fd = open(filename, O_RDONLY, 0);
             if (fd == -1) {
-
-                
 
                 //file does not exist
                 if (errno == ENOENT) {
@@ -212,17 +215,17 @@ int main(int argc, char *argv[]) {
             //ssize_t passed_bytes = pass_n_bytes(fd, sock, con_len - bytes_written);
             // ssize_t bytes_written = write_n_bytes(fd, buf[], n)
 
+            close(fd);
+
         }
 
-        else {
-            printf("request not supported");
+        else if (get_put==2){
+            char message501[]
+                = "HTTP/1.1 501 Not Implemented\r\nContent-Length: 16\r\n\r\nNot Implemented\n";
+            ssize_t writ4 = write_n_bytes(sock, message501, strlen(message501));
         }
-
-        //ssize_t bytes_written = write_n_bytes(sock, buffer, bytes_read);
-        // printf("bytes written: %zd", bytes_written);
 
         free(filename);
-
         close(sock);
     }
 
