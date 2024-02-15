@@ -42,15 +42,15 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    Listener_Socket *socket = calloc(1, sizeof(Listener_Socket));
-    int sock = listener_init(socket, port);
+    Listener_Socket socket;
+    int sock = listener_init(&socket, port);
     if (sock == -1) {
         fprintf(stderr, "Invalid Port\n");
         exit(1);
     }
 
     while (1) {
-        sock = listener_accept(socket);
+        sock = listener_accept(&socket);
 
         int buff_size = 2048;
         char buffer[buff_size];
@@ -67,12 +67,11 @@ int main(int argc, char *argv[]) {
         int get_put = 2;
 
         if (regexec(&regex, buffer, ARRAY_SIZE(pmatch), pmatch, 0) == 0) {
-            for (int i = 0; i < ARRAY_SIZE(pmatch); ++i) {
+            for (int i = 0; i < (int) ARRAY_SIZE(pmatch); ++i) {
                 regoff_t start = pmatch[i].rm_so;
                 regoff_t end = pmatch[i].rm_eo;
 
                 if (start != -1 && end != -1) {
-                    printf("%.*s\n", (int) (end - start), buffer + start);
 
                     if (i == 1) {
 
@@ -101,7 +100,7 @@ int main(int argc, char *argv[]) {
 
                         strncpy(filename, buffer + start, end - start);
                         filename[end - start] = '\0';
-                        printf("Filename: %s\n", filename);
+                        //printf("Filename: %s\n", filename);
                     }
 
                     if (i == 3) {
@@ -115,7 +114,7 @@ int main(int argc, char *argv[]) {
                             char message505[]
                                 = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: "
                                   "22\r\n\r\nVersion Not Supported\n";
-                            ssize_t writ5 = write_n_bytes(sock, message505, strlen(message505));
+                            write_n_bytes(sock, message505, strlen(message505));
                             get_put = 9;
                         }
                     }
@@ -125,7 +124,7 @@ int main(int argc, char *argv[]) {
 
             char message400[]
                 = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
-            ssize_t writ3 = write_n_bytes(sock, message400, strlen(message400));
+            write_n_bytes(sock, message400, strlen(message400));
         }
 
         //IF GET
@@ -138,14 +137,9 @@ int main(int argc, char *argv[]) {
                 if (errno == ENOENT) {
                     char message404[]
                         = "HTTP/1.1 404 Not Found\r\nContent-Length: 10\r\n\r\nNot Found\n";
-                    ssize_t writ2 = write_n_bytes(sock, message404, strlen(message404));
+                    write_n_bytes(sock, message404, strlen(message404));
                 }
-                // else {
-                //     char message403[]
-                //         = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
-                //     ssize_t writ3 = write_n_bytes(sock, message403, strlen(message403));
-                //     //fprintf(stderr, "Failed to open file for get\n");
-                // }
+
             } else {
 
                 struct stat statbuf;
@@ -157,13 +151,13 @@ int main(int argc, char *argv[]) {
                 if (S_ISDIR(statbuf.st_mode)) {
                     char message403[]
                         = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
-                    ssize_t writ3 = write_n_bytes(sock, message403, strlen(message403));
+                    write_n_bytes(sock, message403, strlen(message403));
                     //fprintf(stderr, "Failed to open file for get\n");
                 }
 
                 char message[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
 
-                ssize_t writ = write_n_bytes(sock, message, strlen(message));
+                write_n_bytes(sock, message, strlen(message));
 
                 struct stat fileStat;
                 if (fstat(fd, &fileStat) == -1) {
@@ -175,11 +169,11 @@ int main(int argc, char *argv[]) {
 
                 char sizeString[1000];
                 snprintf(sizeString, 1000, "%lld", (long long) fileSize);
-                writ = write_n_bytes(sock, sizeString, strlen(sizeString));
+                write_n_bytes(sock, sizeString, strlen(sizeString));
 
-                writ = write_n_bytes(sock, "\r\n\r\n", strlen("\r\n\r\n"));
+                write_n_bytes(sock, "\r\n\r\n", strlen("\r\n\r\n"));
 
-                ssize_t passed_bytes = pass_n_bytes(fd, sock, fileSize);
+                pass_n_bytes(fd, sock, fileSize);
             }
 
             close(fd);
@@ -194,7 +188,7 @@ int main(int argc, char *argv[]) {
 
             if (access(filename, F_OK) != -1) {
                 exists = 1;
-            } 
+            }
 
             fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0666);
             if (fd == -1) {
@@ -223,8 +217,8 @@ int main(int argc, char *argv[]) {
                 regoff_t end2 = pmatch2[2].rm_eo;
 
                 if (start0 != -1 && end0 != -1) {
-                    printf("%.*s: ", (int) (end1 - start1), buffer + start1 + offset);
-                    printf("%.*s", (int) (end2 - start2), buffer + start2 + offset);
+                    //printf("%.*s: ", (int) (end1 - start1), buffer + start1 + offset);
+                    //printf("%.*s", (int) (end2 - start2), buffer + start2 + offset);
 
                     strncpy(
                         keyValues[numKeyValuePairs].key, buffer + start1 + offset, end1 - start1);
@@ -236,7 +230,7 @@ int main(int argc, char *argv[]) {
                         = '\0'; // Null-terminate the string
 
                     numKeyValuePairs++; // Increment the counter
-                    printf("\n");
+                    //printf("\n");
                 }
 
                 offset += end0;
@@ -244,13 +238,13 @@ int main(int argc, char *argv[]) {
             int content_LENGTH = 0;
 
             for (int i = 0; i < numKeyValuePairs; i++) {
-                printf("Key: %s, Value: %s\n", keyValues[i].key, keyValues[i].value);
+                //printf("Key: %s, Value: %s\n", keyValues[i].key, keyValues[i].value);
 
                 // Check if the key is "Content-Length:"
                 if (strcmp(keyValues[i].key, "Content-Length") == 0) {
                     // Convert the value to an integer and store it in content_LENGTH
                     content_LENGTH = atoi(keyValues[i].value);
-                    printf("Content-Length found: %d\n", content_LENGTH);
+                    //printf("Content-Length found: %d\n", content_LENGTH);
                 }
             }
 
@@ -270,26 +264,19 @@ int main(int argc, char *argv[]) {
                     exit(EXIT_FAILURE);
                 }
 
-                ssize_t passed_bytes = pass_n_bytes(fd, sock, content_LENGTH - bytes_written);
+                pass_n_bytes(fd, sock, content_LENGTH - bytes_written);
             } else {
                 fprintf(stderr, "Double CRLF not found\n");
                 exit(EXIT_FAILURE);
             }
 
-            if (exists == 1){
-                char message200[]
-                        = "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nOK\n";
-                    ssize_t writ9 = write_n_bytes(sock, message200, strlen(message200));
+            if (exists == 1) {
+                char message200[] = "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nOK\n";
+                write_n_bytes(sock, message200, strlen(message200));
+            } else {
+                char message201[] = "HTTP/1.1 201 Created\r\nContent-Length: 8\r\n\r\nCreated\n";
+                write_n_bytes(sock, message201, strlen(message201));
             }
-            else{
-                char message201[]
-                        = "HTTP/1.1 201 Created\r\nContent-Length: 8\r\n\r\nCreated\n";
-                    ssize_t writ99 = write_n_bytes(sock, message201, strlen(message201));
-
-            }
-
-
-            
 
             close(fd);
 
@@ -298,10 +285,10 @@ int main(int argc, char *argv[]) {
         else if (get_put == 2) {
             char message501[]
                 = "HTTP/1.1 501 Not Implemented\r\nContent-Length: 16\r\n\r\nNot Implemented\n";
-            ssize_t writ4 = write_n_bytes(sock, message501, strlen(message501));
+            write_n_bytes(sock, message501, strlen(message501));
         }
 
-        free(filename);
+        //free(filename);
         close(sock);
     }
 
