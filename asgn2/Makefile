@@ -1,19 +1,38 @@
-CC = clang
-CFLAGS = -Wall -Wextra -Wstrict-prototypes -Werror -pedantic
+EXECBIN  = httpserver
+SOURCES  = $(wildcard *.c)
+HEADERS  = $(wildcard *.h)
+OBJECTS  = $(SOURCES:%.c=%.o)
+LIBRARY  = asgn2_helper_funcs.a
+FORMATS  = $(SOURCES:%.c=.format/%.c.fmt) $(HEADERS:%.h=.format/%.h.fmt)
 
-LIB = asgn2_helper_funcs.a
+CC       = clang
+FORMAT   = clang-format
+CFLAGS   = -Wall -Wpedantic -Werror -Wextra -DDEBUG
 
 .PHONY: all clean format
-all: httpserver
 
-httpserver: httpserver.o $(LIB)
-	$(CC) $(CFLAGS) $^ -o $@
+all: $(EXECBIN)
 
-httpserver.o: httpserver.c asgn2_helper_funcs.h
+$(EXECBIN): $(OBJECTS) $(LIBRARY)
+	$(CC) -o $@ $^
+
+%.o : %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
-format: 
-	clang-format -i -style=file *.[ch]
-
 clean:
-	rm -f httpserver *.o
+	rm -f $(EXECBIN) $(OBJECTS)
+
+nuke: clean
+	rm -rf .format
+
+format: $(FORMATS)
+
+.format/%.c.fmt: %.c
+	mkdir -p .format
+	$(FORMAT) -i $<
+	touch $@
+
+.format/%.h.fmt: %.h
+	mkdir -p .format
+	$(FORMAT) -i $<
+	touch $@
