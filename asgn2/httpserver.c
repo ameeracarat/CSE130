@@ -21,6 +21,8 @@
 #include <string.h>
 #include <unistd.h>
 
+//received modified read_n_bytes code from Professor Veenstra
+//not using
 ssize_t read_n_bytes2(int fd, char buf[], size_t n) {
     size_t total = 0;
     ssize_t bytes = 0;
@@ -81,22 +83,11 @@ int main(int argc, char *argv[]) {
 
         ssize_t bytes_read = 0;
 
-        //bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
-        bytes_read = read_n_bytes2(sock, buffer, 2048);
+        bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
 
-        printf("Error number: %d\n", errno);
-        // You can use strerror to get a string representation of the error
-        printf("Error message: %s\n", strerror(errno));
+        fprintf(stderr, "buffer: %s\n", buffer);
 
-        fprintf(stderr, "bytes read: %zd\n", bytes_read);
-
-        fprintf(stderr, "%s\n", buffer);
-
-        //bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
-
-        // fprintf(stderr, "bytes read: %zd\n", bytes_read);
-
-        //fprintf(stderr, "%s\n", buffer);
+        //bytes_read = read_n_bytes2(sock, buffer, 2048);
 
         if (regcomp(&regex, re, REG_NEWLINE | REG_EXTENDED)) {
             fprintf(stderr, "Failed to compile regex\n");
@@ -244,8 +235,6 @@ int main(int argc, char *argv[]) {
             struct KeyValue keyValues[100];
             int numKeyValuePairs = 0;
 
-            fprintf(stderr, "filename: %s\n", filename);
-
             while (regexec(&regex, buffer + offset, ARRAY_SIZE(pmatch2), pmatch2, 0) == 0) {
 
                 regoff_t start0 = pmatch2[0].rm_so;
@@ -276,20 +265,18 @@ int main(int argc, char *argv[]) {
 
                 offset += end0;
             }
-
             int content_LENGTH = 0;
 
             for (int i = 0; i < numKeyValuePairs; i++) {
+                //printf("Key: %s, Value: %s\n", keyValues[i].key, keyValues[i].value);
 
+                // Check if the key is "Content-Length:"
                 if (strcmp(keyValues[i].key, "Content-Length") == 0) {
-
+                    // Convert the value to an integer and store it in content_LENGTH
                     content_LENGTH = atoi(keyValues[i].value);
+                    //printf("Content-Length found: %d\n", content_LENGTH);
                 }
             }
-
-            fprintf(stderr, "length: %d\n", content_LENGTH);
-
-            int check = 0;
 
             char *body_start = strstr(buffer, "\r\n\r\n");
             if (body_start != NULL) {
@@ -301,26 +288,25 @@ int main(int argc, char *argv[]) {
 
                 // Write out the message body
                 //ssize_t bytes_written = write(fd, body_start, body_length);
-
                 ssize_t bytes_written = write_n_bytes(fd, body_start, body_length);
-                fprintf(stderr, "passed: %zd\n", bytes_written);
-                if (bytes_written == 0) {
-                    check = 1;
-                    fprintf(stderr, "CHECKED\n");
-                }
+
                 if (bytes_written == -1) {
                     fprintf(stderr, "Failed to write message body\n");
                     exit(EXIT_FAILURE);
                 }
+                //int sum_c = 0;
 
-                ssize_t passed = 0;
+                if (bytes_written == 0) {
+                    fprintf(stderr, "check\n");
 
-                if (check == 1) {
-                    passed = pass_n_bytes(fd, sock, content_LENGTH);
+                    bytes_read = read_n_bytes2(sock, buffer, 2048);
+
+                    bytes_written = write_n_bytes(fd, buffer, bytes_read);
+
+                    //sum_c = 1;
                 }
 
-                fprintf(stderr, "passed: %zd\n", passed);
-
+                pass_n_bytes(fd, sock, content_LENGTH - bytes_written);
             } else {
                 fprintf(stderr, "Double CRLF not found\n");
                 exit(EXIT_FAILURE);
