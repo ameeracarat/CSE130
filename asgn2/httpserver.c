@@ -85,14 +85,16 @@ int main(int argc, char *argv[]) {
 
         bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
 
-        fprintf(stderr, "buffer: %s\n", buffer);
+        //    fprintf(stderr, "buffer: %s\n", buffer);
 
         //bytes_read = read_n_bytes2(sock, buffer, 2048);
 
         if (regcomp(&regex, re, REG_NEWLINE | REG_EXTENDED)) {
-            fprintf(stderr, "Failed to compile regex\n");
+            // fprintf(stderr, "Failed to compile regex\n");
             exit(EXIT_FAILURE);
         }
+
+        buffer[bytes_read] = '\0';
 
         int get_put = 2;
 
@@ -124,7 +126,7 @@ int main(int argc, char *argv[]) {
 
                         filename = malloc(end - start + 1);
                         if (filename == NULL) {
-                            fprintf(stderr, "Memory allocation failed\n");
+                            //       fprintf(stderr, "Memory allocation failed\n");
                             exit(EXIT_FAILURE);
                         }
 
@@ -222,12 +224,12 @@ int main(int argc, char *argv[]) {
 
             fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0666);
             if (fd == -1) {
-                fprintf(stderr, "Failed to open file\n");
+                //   fprintf(stderr, "Failed to open file\n");
                 exit(1);
             }
 
             if (regcomp(&regex, re2, REG_NEWLINE | REG_EXTENDED)) {
-                fprintf(stderr, "Failed to compile regex\n");
+                //   fprintf(stderr, "Failed to compile regex\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -291,13 +293,13 @@ int main(int argc, char *argv[]) {
                 ssize_t bytes_written = write_n_bytes(fd, body_start, body_length);
 
                 if (bytes_written == -1) {
-                    fprintf(stderr, "Failed to write message body\n");
+                    //   fprintf(stderr, "Failed to write message body\n");
                     exit(EXIT_FAILURE);
                 }
                 //int sum_c = 0;
 
                 if (bytes_written == 0) {
-                    fprintf(stderr, "check\n");
+                    //   fprintf(stderr, "check\n");
 
                     bytes_read = read_n_bytes2(sock, buffer, 2048);
 
@@ -308,7 +310,7 @@ int main(int argc, char *argv[]) {
 
                 pass_n_bytes(fd, sock, content_LENGTH - bytes_written);
             } else {
-                fprintf(stderr, "Double CRLF not found\n");
+                //   fprintf(stderr, "Double CRLF not found\n");
                 exit(EXIT_FAILURE);
             }
 
