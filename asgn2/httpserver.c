@@ -157,6 +157,7 @@ int main(int argc, char *argv[]) {
             char message400[]
                 = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
             write_n_bytes(sock, message400, strlen(message400));
+            get_put = 9;
         }
 
         //IF GET
