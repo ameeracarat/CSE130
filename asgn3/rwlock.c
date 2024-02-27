@@ -68,7 +68,7 @@ void reader_lock(rwlock_t *rw) {
 
     rw->active_readers++;
     rw->waiting_readers--;
- 
+
     pthread_mutex_unlock(&rw->mutex);
 }
 
