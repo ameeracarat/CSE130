@@ -10,8 +10,8 @@ typedef struct rwlock {
     pthread_cond_t reader_cond;
     pthread_cond_t writer_cond;
 
-    int readers;
-    int writers;
+    int active_readers;
+    int active_writers;
     int waiting_readers;
     int waiting_writers;
     int nway;
@@ -29,17 +29,15 @@ rwlock_t *rwlock_new(PRIORITY p, uint32_t n) {
 
     rwlock_t *rw = (rwlock_t *) malloc(sizeof(rwlock_t));
 
-    int rc = 0;
+    pthread_mutex_init(&(rw->mutex), NULL);
+    pthread_cond_init(&(rw->reader_cond), NULL);
+    pthread_cond_init(&(rw->writer_cond), NULL);
 
-    rc = pthread_mutex_init(&rw->mutex, NULL);
-    rc = pthread_mutex_init(&rw->reader_cond, NULL);
-    rc = pthread_mutex_init(&rw->writer_cond, NULL);
-
-    rw->readers = 0;
-    rw->writers = 0;
+    rw->active_readers = 0;
+    rw->active_writers = 0;
     rw->waiting_readers = 0;
     rw->waiting_writers = 0;
-    rw->priority = p;
+    rw->p = p;
     rw->nway = n;
 
     return rw;
@@ -68,8 +66,8 @@ void rwlock_delete(rwlock_t **rw) {
         return;
 
     pthread_mutex_destroy(&((*rw)->mutex));
-    pthread_mutex_destroy(&((*rw)->reader_cond));
-    pthread_mutex_destroy(&((*rw)->writer_cond));
+    pthread_cond_destroy(&((*rw)->reader_cond));
+    pthread_cond_destroy(&((*rw)->writer_cond));
 
     free(*rw);
     *rw = NULL;
@@ -82,24 +80,27 @@ void reader_lock(rwlock_t *rw) {
     pthread_mutex_lock(&rw->mutex);
     rw->waiting_readers++;
 
-    while (rw->writers > 0 || (rw->priority == WRITERS && rw->waiting_writers > 0)) {
-        pthread_cond_wait(&waiting_writers);
+    while (rw->active_writers > 0 || (rw->p == WRITERS && rw->waiting_writers > 0)) {
+        pthread_cond_wait(&rw->writer_cond, &rw->mutex);
     }
-    rw->readers++;
 
+    rw->active_readers++;
     rw->waiting_readers--;
+
     pthread_mutex_unlock(&rw->mutex);
 }
 
 void reader_unlock(rwlock_t *rw) {
-    if (rw == NULL)
+
+    if (rw == NULL) {
         return;
+    }
 
     pthread_mutex_lock(&rw->mutex);
     rw->waiting_readers++;
 
-    while (rw->writers > 0 || (rw->priority WRITERS && rw->waiting_writers > 0)) {
-        pthread_cond_wait(&waiting_writers);
+    if (rw->active_writers > 0 || (rw->p == WRITERS && rw->waiting_writers > 0)) {
+        pthread_cond_wait(&rw->writer_cond, &rw->mutex);
     }
 
     rw->waiting_readers--;
@@ -109,17 +110,9 @@ void reader_unlock(rwlock_t *rw) {
 void writer_lock(rwlock_t *rw) {
     if (rw == NULL)
         return;
-
-    if (rw->priority == WRITERS) {
-        pthread_rwlock_wrlock(&(rw->lock));
-    } else if (rw->priority == N_WAY) {
-        // Implement logic for N_WAY priority
-    }
 }
 
 void writer_unlock(rwlock_t *rw) {
     if (rw == NULL)
         return;
-
-    pthread_rwlock_unlock(&(rw->lock));
 }
