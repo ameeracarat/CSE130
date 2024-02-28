@@ -1,5 +1,6 @@
 #include "rwlock.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <pthread.h>
 
 typedef struct rwlock {
@@ -15,6 +16,7 @@ typedef struct rwlock {
     int waiting_readers;
     int waiting_writers;
     int nway;
+    //int flag;
 
 } rwlock_t;
 
@@ -40,6 +42,9 @@ rwlock_t *rwlock_new(PRIORITY p, uint32_t n) {
     rw->p = p;
     rw->nway = n;
 
+    //rw->flag = 3;
+    // rw->count = n;
+
     return rw;
 }
 
@@ -61,13 +66,38 @@ void reader_lock(rwlock_t *rw) {
     }
     pthread_mutex_lock(&rw->mutex);
     rw->waiting_readers++;
+    fprintf(stderr, "waiting_readers: %d\n", rw->waiting_readers);
 
-    while (rw->active_writers > 0 || (rw->p == WRITERS && rw->waiting_writers > 0)) {
-        pthread_cond_wait(&rw->reader_cond, &rw->mutex);
+    // }
+    if (rw->p == READERS) {
+        while (rw->active_writers > 0) {
+            pthread_cond_wait(&rw->reader_cond, &rw->mutex);
+        }
+
     }
 
-    rw->active_readers++;
+    else if (rw->p == WRITERS) {
+
+        while (rw->active_writers > 0 || (rw->active_readers > 0)) {
+
+            pthread_cond_wait(&rw->reader_cond, &rw->mutex);
+        }
+    }
+
+    // if nway PRIORITY{
+    //     if active reader and waiting writer and nway count less than n and flag is 0
+
+    // else nway prioryt and active writers and no active READERS
+    // return active writers
+    // }
+
+    // increment nway count in reader lock;
+
     rw->waiting_readers--;
+    rw->active_readers++;
+
+    fprintf(stderr, "waiting_readers: %d\n", rw->waiting_readers);
+    fprintf(stderr, "active_readers: %d\n", rw->active_readers);
 
     pthread_mutex_unlock(&rw->mutex);
 }
@@ -80,21 +110,120 @@ void reader_unlock(rwlock_t *rw) {
 
     pthread_mutex_lock(&rw->mutex);
     rw->active_readers--;
+    fprintf(stderr, "active_readers: %d\n", rw->active_readers);
 
-    if (rw->active_readers == 0 && (rw->p == WRITERS && rw->waiting_writers > 0)) {
-        pthread_cond_wait(&rw->writer_cond, &rw->mutex);
+    // if (rw->p == WRITERS && rw->waiting_writers > 0) {
+
+    //     pthread_cond_signal(&rw->writer_cond);
+    // }
+
+    // else if (rw->p == READERS) {
+    //     if (rw->active_readers == 0 && (rw->waiting_writers > 0 && rw->waiting_readers == 0)) {
+    //         pthread_cond_signal(&rw->writer_cond);
+    //     }
+    // }
+
+    if (rw->waiting_readers > 0) {
+        pthread_cond_broadcast(&rw->reader_cond);
+
+    } else if (rw->waiting_writers > 0) {
+        pthread_cond_broadcast(&rw->writer_cond);
     }
 
-    rw->waiting_readers--;
     pthread_mutex_unlock(&rw->mutex);
 }
 
 void writer_lock(rwlock_t *rw) {
     if (rw == NULL)
         return;
+
+    pthread_mutex_lock(&rw->mutex);
+    rw->waiting_writers++;
+    fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
+
+    if (rw->p == READERS) {
+        while (rw->active_writers > 0 || (rw->active_readers > 0) || rw->waiting_readers > 0) {
+            pthread_cond_wait(&rw->writer_cond, &rw->mutex);
+        }
+    } else if (rw->p == WRITERS) {
+
+        while (rw->active_writers > 0 || (rw->active_readers > 0)) {
+
+            pthread_cond_wait(&rw->writer_cond, &rw->mutex);
+        }
+    }
+
+    // if nway
+    // if active readers{
+    //     let them go
+    // }if active readers and writers{
+
+    // }
+
+    rw->waiting_writers--;
+    rw->active_writers++;
+    fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
+    fprintf(stderr, "active_writers: %d\n", rw->active_writers);
+
+    pthread_mutex_unlock(&rw->mutex);
 }
 
 void writer_unlock(rwlock_t *rw) {
-    if (rw == NULL)
+    if (rw == NULL) {
         return;
+    }
+
+    pthread_mutex_lock(&rw->mutex);
+
+    rw->active_writers--;
+    fprintf(stderr, "active_writers: %d\n", rw->active_writers);
+    fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
+
+    // if (rw->p == READERS) {
+    //     if (rw->waiting_readers > 0) {
+    //         pthread_cond_signal(&rw->reader_cond);
+    //     } else if (rw->waiting_writers > 0) {
+    //         pthread_cond_signal(&rw->writer_cond);
+    //     }
+
+    // } else if (rw->p == WRITERS) {
+
+    //     if (rw->waiting_writers > 0) {
+    //         pthread_cond_signal(&rw->reader_cond);
+    //     } else if (rw->waiting_readers > 0) {
+    //         pthread_cond_signal(&rw->writer_cond);
+    //     }
+    // }
+
+    // if (p == N_WAY) {
+    // }
+
+    if (rw->waiting_readers > 0) {
+        pthread_cond_broadcast(&rw->reader_cond);
+
+    } else if (rw->waiting_writers > 0) {
+        pthread_cond_broadcast(&rw->writer_cond);
+    }
+
+    pthread_mutex_unlock(&rw->mutex);
+
+    // if (rw->p == WRITERS) {
+
+    //     if (rw->waiting_writers > 0) {
+    //         pthread_cond_signal(&rw->writer_cond);
+    //     } else if (rw->waiting_readers > 0) {
+    //         pthread_cond_signal(&rw->reader_cond);
+    //     }
+
+    // } else if (rw->p == READERS) {
+
+    //     if (rw->waiting_readers > 0) {
+    //         pthread_cond_signal(&rw->reader_cond);
+    //     } else if (rw->waiting_writers > 0) {
+    //         pthread_cond_signal(&rw->reader_cond);
+    //     }
+    // }
+    // else if (p == N_WAY){
+
+    // }
 }
