@@ -23,13 +23,6 @@ typedef struct rwlock {
 
 rwlock_t *rwlock_new(PRIORITY p, uint32_t n) {
 
-    //only use if statement for writer/reader unlock
-
-    //if reader --> return writers
-    //if writers --> return reader
-
-    //n way looks for num of waiting readers/writers and (n way readers if its greater than passed number)
-
     rwlock_t *rw = (rwlock_t *) malloc(sizeof(rwlock_t));
 
     pthread_mutex_init(&(rw->mutex), NULL);
@@ -67,7 +60,7 @@ void reader_lock(rwlock_t *rw) {
     }
     pthread_mutex_lock(&rw->mutex);
     rw->waiting_readers++;
-    fprintf(stderr, "waiting_readers: %d\n", rw->waiting_readers);
+    //fprintf(stderr, "waiting_readers: %d\n", rw->waiting_readers);
 
     if (rw->p == READERS) {
         while (rw->active_writers > 0) {
@@ -78,7 +71,7 @@ void reader_lock(rwlock_t *rw) {
 
     else if (rw->p == WRITERS) {
 
-        while (rw->active_writers > 0 || (rw->active_readers > 0)) {
+        while (rw->active_writers > 0 || rw->waiting_writers > 0) {
 
             pthread_cond_wait(&rw->reader_cond, &rw->mutex);
         }
@@ -88,21 +81,12 @@ void reader_lock(rwlock_t *rw) {
         }
     }
 
-    // if nway PRIORITY{
-    //     if active reader and waiting writer and nway count less than n and flag is 0
-
-    // else nway prioryt and active writers and no active READERS
-    // return active writers
-    // }
-
-    // increment nway count in reader lock;
-
     rw->waiting_readers--;
     rw->active_readers++;
     rw->count--;
 
-    fprintf(stderr, "waiting_readers: %d\n", rw->waiting_readers);
-    fprintf(stderr, "active_readers: %d\n", rw->active_readers);
+    // fprintf(stderr, "waiting_readers: %d\n", rw->waiting_readers);
+    // fprintf(stderr, "active_readers: %d\n", rw->active_readers);
 
     pthread_mutex_unlock(&rw->mutex);
 }
@@ -115,7 +99,7 @@ void reader_unlock(rwlock_t *rw) {
 
     pthread_mutex_lock(&rw->mutex);
     rw->active_readers--;
-    fprintf(stderr, "active_readers: %d\n", rw->active_readers);
+    //  fprintf(stderr, "active_readers: %d\n", rw->active_readers);
 
     if (rw->waiting_readers > 0) {
         pthread_cond_broadcast(&rw->reader_cond);
@@ -133,7 +117,7 @@ void writer_lock(rwlock_t *rw) {
 
     pthread_mutex_lock(&rw->mutex);
     rw->waiting_writers++;
-    fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
+    //  fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
 
     if (rw->p == READERS) {
         while (rw->active_writers > 0 || (rw->active_readers > 0) || rw->waiting_readers > 0) {
@@ -153,17 +137,10 @@ void writer_lock(rwlock_t *rw) {
     }
     rw->count = rw->nway;
 
-    // if nway
-    // if active readers{
-    //     let them go
-    // }if active readers and writers{
-
-    // }
-
     rw->waiting_writers--;
     rw->active_writers++;
-    fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
-    fprintf(stderr, "active_writers: %d\n", rw->active_writers);
+    // fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
+    // fprintf(stderr, "active_writers: %d\n", rw->active_writers);
 
     pthread_mutex_unlock(&rw->mutex);
 }
@@ -176,27 +153,8 @@ void writer_unlock(rwlock_t *rw) {
     pthread_mutex_lock(&rw->mutex);
 
     rw->active_writers--;
-    fprintf(stderr, "active_writers: %d\n", rw->active_writers);
-    fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
-
-    // if (rw->p == READERS) {
-    //     if (rw->waiting_readers > 0) {
-    //         pthread_cond_signal(&rw->reader_cond);
-    //     } else if (rw->waiting_writers > 0) {
-    //         pthread_cond_signal(&rw->writer_cond);
-    //     }
-
-    // } else if (rw->p == WRITERS) {
-
-    //     if (rw->waiting_writers > 0) {
-    //         pthread_cond_signal(&rw->reader_cond);
-    //     } else if (rw->waiting_readers > 0) {
-    //         pthread_cond_signal(&rw->writer_cond);
-    //     }
-    // }
-
-    // if (p == N_WAY) {
-    // }
+    // fprintf(stderr, "active_writers: %d\n", rw->active_writers);
+    // fprintf(stderr, "waiting_writers: %d\n", rw->waiting_writers);
 
     if (rw->waiting_readers > 0) {
         pthread_cond_broadcast(&rw->reader_cond);
