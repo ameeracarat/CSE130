@@ -1,4 +1,4 @@
-EXECBINS = queue_test rwlock_test
+EXECBIN = queue_test rwlock_test
 
 SOURCES  = $(wildcard *.c)
 OBJECTS  = $(SOURCES:%.c=%.o)
