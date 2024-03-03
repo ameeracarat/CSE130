@@ -17,7 +17,6 @@ typedef struct rwlock {
     int waiting_writers;
     int nway;
     int count;
-    //int flag;
 
 } rwlock_t;
 
