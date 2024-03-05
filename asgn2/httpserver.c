@@ -83,12 +83,11 @@ int main(int argc, char *argv[]) {
 
         ssize_t bytes_read = 0;
 
-        //bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
+        bytes_read = read_until(sock, buffer, 2048, "\r\n\r\n");
 
-        
+        //    fprintf(stderr, "buffer: %s\n", buffer);
 
-        bytes_read = read_n_bytes2(sock, buffer, 2048);
-        fprintf(stderr, "buffer: %s\n", buffer);
+        //bytes_read = read_n_bytes2(sock, buffer, 2048);
 
         if (regcomp(&regex, re, REG_NEWLINE | REG_EXTENDED)) {
             // fprintf(stderr, "Failed to compile regex\n");
@@ -269,7 +268,7 @@ int main(int argc, char *argv[]) {
 
                 offset += end0;
             }
-           // int content_LENGTH = 0;
+            int content_LENGTH = 0;
 
             for (int i = 0; i < numKeyValuePairs; i++) {
                 //printf("Key: %s, Value: %s\n", keyValues[i].key, keyValues[i].value);
@@ -277,7 +276,7 @@ int main(int argc, char *argv[]) {
                 // Check if the key is "Content-Length:"
                 if (strcmp(keyValues[i].key, "Content-Length") == 0) {
                     // Convert the value to an integer and store it in content_LENGTH
-                   // content_LENGTH = atoi(keyValues[i].value);
+                    content_LENGTH = atoi(keyValues[i].value);
                     //printf("Content-Length found: %d\n", content_LENGTH);
                 }
             }
@@ -301,7 +300,7 @@ int main(int argc, char *argv[]) {
                 //int sum_c = 0;
 
                 if (bytes_written == 0) {
-                       fprintf(stderr, "check\n");
+                    //   fprintf(stderr, "check\n");
 
                     bytes_read = read_n_bytes2(sock, buffer, 2048);
 
@@ -310,20 +309,7 @@ int main(int argc, char *argv[]) {
                     //sum_c = 1;
                 }
 
-                int passed = 0;
-
-                do{
-                    passed = read_n_bytes2(sock, buffer, 2048);
-
-                   write_n_bytes(fd, buffer, passed);
-
-                } while (passed > 0);
-
-
-                
-
-              //  int passed = pass_n_bytes(fd, sock, content_LENGTH - bytes_written);
-                fprintf(stderr, "passed: %d\n", passed);
+                pass_n_bytes(sock, fd, content_LENGTH - bytes_written);
             } else {
                 //   fprintf(stderr, "Double CRLF not found\n");
                 exit(EXIT_FAILURE);
