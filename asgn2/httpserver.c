@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
                 if (strcmp(keyValues[i].key, "Content-Length") == 0) {
                     // Convert the value to an integer and store it in content_LENGTH
                     content_LENGTH = atoi(keyValues[i].value);
-                    //printf("Content-Length found: %d\n", content_LENGTH);
+                    printf("Content-Length found: %d\n", content_LENGTH);
                 }
             }
 
@@ -299,15 +299,17 @@ int main(int argc, char *argv[]) {
                 }
                 //int sum_c = 0;
 
-                if (bytes_written == 0) {
-                    //   fprintf(stderr, "check\n");
+                // if (bytes_written == 0) {
+                //     fprintf(stderr, "check\n");
 
-                    bytes_read = read_n_bytes2(sock, buffer, 2048);
+                //     bytes_read = read_n_bytes2(sock, buffer, 2048);
 
-                    bytes_written = write_n_bytes(fd, buffer, bytes_read);
+                //     fprintf(stderr, "read: %zd\n", bytes_read);
 
-                    //sum_c = 1;
-                }
+                //     bytes_written = write_n_bytes(fd, buffer, bytes_read);
+
+                //     //sum_c = 1;
+                // }
 
                 pass_n_bytes(sock, fd, content_LENGTH - bytes_written);
             } else {
