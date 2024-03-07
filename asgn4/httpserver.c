@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #include "queue.h"
 #include "rwlock.h"
@@ -174,11 +175,37 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
 
 void *worker_thread(void *args) {
     (void) args;
+
+    printf("worker\n");
     while (1) {
+
         int *sock_ptr = NULL;
+        // printf("Value of q: %p\n", (void *)request_queue);
+
         queue_pop(request_queue, (void **) &sock_ptr);
-        int sock = *sock_ptr; // Dereference the pointer to get the actual socket value
-        free(sock_ptr);
+
+        //if (sock_ptr != NULL) {
+        int sock = (intptr_t) sock_ptr; // Cast back to integer type
+        printf("Socket value: %d\n", sock);
+        // }
+
+        // if (queue_pop(request_queue, (void **) &sock_ptr) != true) {
+        //     printf("Failed to retrieve socket from the queue\n");
+        //     //continue; // Skip processing if failed to retrieve socket
+        // }else{
+        //     printf("SUCCESS");
+        // }
+
+        // if (sock_ptr == NULL) {
+        //     printf("Socket pointer is NULL, skipping processing\n");
+        //     continue; // Skip processing if socket pointer is NULL
+        // }
+
+        // printf("hello");
+
+        // int sock = *sock_ptr; // Dereference the pointer to get the actual socket value
+        // // //free(sock_ptr);
+        //  printf("sock: %d", sock);
 
         regex_t regex;
         regmatch_t pmatch[10];
@@ -315,18 +342,23 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int port = atoi(argv[1]);
+    int port = atoi(argv[optind]);
     if (port < 1 || port > 65535) {
-        fprintf(stderr, "Invalid Port\n");
+
+        printf("port:%d \n", port);
+
+        fprintf(stderr, "1: Invalid Port\n");
         exit(1);
     }
 
     Listener_Socket socket;
     int sock = listener_init(&socket, port);
     if (sock == -1) {
-        fprintf(stderr, "Invalid Port\n");
+        fprintf(stderr, "2: Invalid Port\n");
         exit(1);
     }
+
+    printf("num threads: %d, and port is: %d\n", num_threads, port);
 
     request_queue = queue_new(num_threads); // Queue size equal to number of threads
 
@@ -337,6 +369,7 @@ int main(int argc, char *argv[]) {
     }
 
     while (1) {
+
         sock = listener_accept(&socket);
         queue_push(request_queue, (void *) (intptr_t) sock);
     }
