@@ -82,6 +82,8 @@ void get(int sock, const char *filename, const char *buffer, regex_t regex) {
         fileLockLock = fileLock->lock;
     }
 
+    pthread_mutex_unlock(&reader_mutex);
+
     reader_lock(fileLockLock);
 
     regmatch_t pmatch2[10];
@@ -189,15 +191,13 @@ void get(int sock, const char *filename, const char *buffer, regex_t regex) {
 
     reader_unlock(fileLockLock);
 
-    pthread_mutex_unlock(&reader_mutex);
-
     close(fd);
 }
 
 void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read, regex_t regex) {
 
     //mutex lock
-    pthread_mutex_lock(&writer_mutex);
+    pthread_mutex_lock(&reader_mutex);
 
     //todo: declare variable for lock
     rwlock_t *fileLockLock = NULL;
@@ -228,6 +228,8 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
         fileLock->URI[MAX_URI_LENGTH - 1] = '\0'; // Ensure null-terminated
         fileLockLock = fileLock->lock;
     }
+
+    pthread_mutex_unlock(&reader_mutex);
 
     writer_lock(fileLockLock);
 
@@ -340,7 +342,6 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
 
     //mutex unlock
     writer_unlock(fileLockLock);
-    pthread_mutex_unlock(&writer_mutex);
 
     close(fd);
 }
