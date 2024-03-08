@@ -84,9 +84,8 @@ void get(int sock, const char *filename, const char *buffer, regex_t regex) {
 
     reader_lock(fileLockLock);
 
-
     regmatch_t pmatch2[10];
-    char *re2 = "([a-zA-Z0-9.-]{1,128}): ([ -~]{1,128})\r\n"; 
+    char *re2 = "([a-zA-Z0-9.-]{1,128}): ([ -~]{1,128})\r\n";
 
     if (regcomp(&regex, re2, REG_NEWLINE | REG_EXTENDED)) {
         exit(EXIT_FAILURE);
@@ -186,12 +185,6 @@ void get(int sock, const char *filename, const char *buffer, regex_t regex) {
         pass_n_bytes(fd, sock, fileSize);
     }
 
-   
-
-    
-
-    
-
     fprintf(stderr, "GET,/%s,200,%d\n", filename, request_ID);
 
     reader_unlock(fileLockLock);
@@ -238,8 +231,6 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
 
     writer_lock(fileLockLock);
 
-    
-
     int exists = 0;
 
     if (access(filename, F_OK) != -1) {
@@ -253,7 +244,7 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
     }
 
     regmatch_t pmatch2[10];
-    char *re2 = "([a-zA-Z0-9.-]{1,128}): ([ -~]{1,128})\r\n"; 
+    char *re2 = "([a-zA-Z0-9.-]{1,128}): ([ -~]{1,128})\r\n";
 
     if (regcomp(&regex, re2, REG_NEWLINE | REG_EXTENDED)) {
         exit(EXIT_FAILURE);
