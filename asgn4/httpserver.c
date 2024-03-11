@@ -15,9 +15,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdbool.h>
-
 #include "List.h"
-
 #include "queue.h"
 #include "rwlock.h"
 
@@ -37,7 +35,6 @@ List L;
 //pthread mutex_t;
 
 pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t writer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct KeyValue {
     char key[128];
@@ -50,41 +47,6 @@ struct FileLock {
 };
 
 void get(int sock, const char *filename, const char *buffer, regex_t regex) {
-
-    pthread_mutex_lock(&reader_mutex);
-
-    rwlock_t *fileLockLock = NULL;
-    bool found = false;
-    moveFront(L);
-    while ((cur_index(L) < length(L)) && (found == false) && (length(L) > 0)) {
-        struct FileLock *filelock = get_cursor(L);
-        moveNext(L);
-        if (strcmp(filename, filelock->URI) == 0) { // Compare filenames
-            printf("Found\n"); // Print "found" message
-            found = true;
-            fileLockLock = filelock->lock;
-        }
-    }
-
-    if (!found) {
-        struct FileLock *fileLock = malloc(sizeof(struct FileLock));
-        if (fileLock == NULL) {
-            perror("Error allocating memory for file lock");
-            exit(EXIT_FAILURE);
-        }
-        fileLock->lock = rwlock_new(N_WAY, 2);
-        if (fileLock->lock == NULL) {
-            perror("Error creating file lock");
-            exit(EXIT_FAILURE);
-        }
-        strncpy(fileLock->URI, filename, MAX_URI_LENGTH);
-        fileLock->URI[MAX_URI_LENGTH - 1] = '\0'; // Ensure null-terminated
-        fileLockLock = fileLock->lock;
-    }
-
-    pthread_mutex_unlock(&reader_mutex);
-
-    reader_lock(fileLockLock);
 
     regmatch_t pmatch2[10];
     char *re2 = "([a-zA-Z0-9.-]{1,128}): ([ -~]{1,128})\r\n";
@@ -145,6 +107,7 @@ void get(int sock, const char *filename, const char *buffer, regex_t regex) {
     }
 
     int fd = open(filename, O_RDONLY, 0);
+    //pthread_mutex_unlock(&reader_mutex);
     if (fd == -1) {
 
         //file does not exist
@@ -189,49 +152,10 @@ void get(int sock, const char *filename, const char *buffer, regex_t regex) {
 
     fprintf(stderr, "GET,/%s,200,%d\n", filename, request_ID);
 
-    reader_unlock(fileLockLock);
-
     close(fd);
 }
 
 void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read, regex_t regex) {
-
-    //mutex lock
-    pthread_mutex_lock(&reader_mutex);
-
-    //todo: declare variable for lock
-    rwlock_t *fileLockLock = NULL;
-    bool found = false;
-    moveFront(L);
-    while ((cur_index(L) < length(L)) && (found == false) && (length(L) > 0)) {
-        struct FileLock *filelock = get_cursor(L);
-        moveNext(L);
-        if (strcmp(filename, filelock->URI) == 0) { // Compare filenames
-            printf("Found\n"); // Print "found" message
-            found = true;
-            fileLockLock = filelock->lock;
-        }
-    }
-
-    if (!found) {
-        struct FileLock *fileLock = malloc(sizeof(struct FileLock));
-        if (fileLock == NULL) {
-            perror("Error allocating memory for file lock");
-            exit(EXIT_FAILURE);
-        }
-        fileLock->lock = rwlock_new(N_WAY, 2);
-        if (fileLock->lock == NULL) {
-            perror("Error creating file lock");
-            exit(EXIT_FAILURE);
-        }
-        strncpy(fileLock->URI, filename, MAX_URI_LENGTH);
-        fileLock->URI[MAX_URI_LENGTH - 1] = '\0'; // Ensure null-terminated
-        fileLockLock = fileLock->lock;
-    }
-
-    pthread_mutex_unlock(&reader_mutex);
-
-    writer_lock(fileLockLock);
 
     int exists = 0;
 
@@ -240,6 +164,7 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
     }
 
     int fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+
     if (fd == -1) {
 
         exit(1);
@@ -310,6 +235,7 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
 
         // Calculate the length of the message body
         size_t body_length = bytes_read - (body_start - buffer);
+        fprintf(stdout, "body len: %zu\n", body_length);
 
         ssize_t bytes_written = write_n_bytes(fd, body_start, body_length);
 
@@ -339,9 +265,6 @@ void put(int sock, const char *filename, const char *buffer, ssize_t bytes_read,
 
         fprintf(stderr, "PUT,/%s,201,%d\n", filename, request_ID);
     }
-
-    //mutex unlock
-    writer_unlock(fileLockLock);
 
     close(fd);
 }
@@ -437,12 +360,52 @@ void *worker_thread(void *args) {
             get_put = 9;
         }
 
+        pthread_mutex_lock(&reader_mutex);
+
+        rwlock_t *fileLockLock = NULL;
+        bool found = false;
+        moveFront(L);
+        //fprintf(stderr, "cursor: %d \n",cur_index(L) );
+
+        while ((cur_index(L) >= 0) && (found == false) && (length(L) > 0)) {
+            struct FileLock *filelock = get_cursor(L);
+
+            if (strcmp(filename, filelock->URI) == 0) { // Compare filenames
+
+                found = true;
+                fileLockLock = filelock->lock;
+                //  fprintf(stderr, "Found\n");
+            }
+            moveNext(L);
+        }
+
+        if (!found) {
+            //fprintf(stderr, "Not Found\n");
+            struct FileLock *fileLock = malloc(sizeof(struct FileLock));
+            if (fileLock == NULL) {
+                fprintf(stderr, "Error allocating memory for file lock");
+                exit(EXIT_FAILURE);
+            }
+            fileLock->lock = rwlock_new(N_WAY, 2);
+            if (fileLock->lock == NULL) {
+                fprintf(stderr, "Error creating file lock");
+                exit(EXIT_FAILURE);
+            }
+            strncpy(fileLock->URI, filename, MAX_URI_LENGTH);
+            fileLock->URI[MAX_URI_LENGTH - 1] = '\0'; // Ensure null-terminated
+            fileLockLock = fileLock->lock;
+            append(L, fileLock);
+            //   fprintf(stderr, "Size: %d\n", length(L));
+        }
+
+        pthread_mutex_unlock(&reader_mutex);
+
         //IF GET
         if (get_put == 0) {
 
-            //reader lock
+            reader_lock(fileLockLock);
             get(sock, filename, buffer, regex);
-            //reader unlock
+            reader_unlock(fileLockLock);
 
         }
 
@@ -452,8 +415,11 @@ void *worker_thread(void *args) {
 
             //writer lock
 
+            writer_lock(fileLockLock);
+
             put(sock, filename, buffer, bytes_read, regex);
             //writer unlock
+            writer_unlock(fileLockLock);
 
         }
 
